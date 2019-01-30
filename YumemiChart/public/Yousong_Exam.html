@@ -1,0 +1,241 @@
+<!DOCTYPE html>
+<html>
+    <head>
+            <meta charset="utf-8">
+            <title>ナム・ユソンのグラフ</title>
+    </head>
+    <script src="https://code.highcharts.com/highcharts.js"></script>
+    <script src="https://code.highcharts.com/modules/series-label.js"></script>
+    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.7.6/angular.min.js"></script>
+    <script src="https://code.jquery.com/jquery-3.3.1.min.js"></script>
+    <link href="https://fonts.googleapis.com/css?family=M+PLUS+Rounded+1c|Sawarabi+Gothic" rel="stylesheet">
+    
+    <script type="text/javascript">
+        //Angular.js Area opened
+        var myApp = angular.module('myapp', []);
+        //api-key
+        var apiKey = 'ASX3QiA32QQcCrEnE2dGzsSm8Ezd5Q2JG2ruqxr5';
+        //header infomation
+        var head = {
+                'Content-Type' : 'application/json',
+                'X-API-KEY' : apiKey
+        }
+        myApp.controller('ChartController', ['$scope','$http', '$compile', function($scope, $http, $compile) {
+        	
+            var getStateUrl = 'https://opendata.resas-portal.go.jp/api/v1/prefectures';
+
+            $http({
+                url: getStateUrl,
+                method: 'get',
+                headers: head,
+                XMLHttpRequestResponseType: 'json'
+            }).then(function successCallback(response) {
+                $scope.stateList = response.data.result;
+                $scope.createChart();
+            }, function errorCallback(response) {
+                console.log(response);
+            });
+            
+            $scope.populationPerStateMap = new Array();
+           
+            $scope.renderGraph = function(e) {
+                var curPrefName = $(e.currentTarget).attr('id');
+                var curPrefCode = $(e.currentTarget).attr('value');
+                var duplicateIndex = 0;
+                var duplicateFlag = false;
+                
+                $scope.populationPerStateMap.forEach(function (item, index, array) {
+                    if(item[0].num == curPrefCode){
+                        duplicateIndex = index;
+                        duplicateFlag = true;
+                    }
+                });
+
+                if(duplicateFlag == true){
+                    $scope.populationPerStateMap.splice(duplicateIndex, 1);
+                    $scope.createChart();
+                }else {
+                    var getPopulationUrl = 
+                        'https://opendata.resas-portal.go.jp/api/v1/population/composition/perYear?&prefCode='+curPrefCode;
+                    $http({
+                        url: getPopulationUrl,
+                        method: 'get',
+                        headers: head,
+                        XMLHttpRequestResponseType: 'json'
+                    }).then(function successCallback(response) {
+                        var curInfoArray = new Array();
+                        curInfoArray.push({'num' : curPrefCode,'name' : curPrefName});
+                        curInfoArray.push(response.data.result.data[0].data[4]);
+                        curInfoArray.push(response.data.result.data[0].data[5]);
+                        curInfoArray.push(response.data.result.data[0].data[6]);
+                        curInfoArray.push(response.data.result.data[0].data[7]);
+                        curInfoArray.push(response.data.result.data[0].data[8]);
+                        curInfoArray.push(response.data.result.data[0].data[9]);
+                        curInfoArray.push(response.data.result.data[0].data[10]);
+                        curInfoArray.push(response.data.result.data[0].data[11]);
+                        curInfoArray.push(response.data.result.data[0].data[12]);
+                        $scope.populationPerStateMap.push(curInfoArray);
+                        $scope.createChart();
+                    }, function errorCallback(response) {
+                        console.log(response);
+                    });
+                }
+            }
+            
+            $scope.createChart = function(){
+                var resultMap = $scope.populationPerStateMap;
+                var chartParams = new Array();
+                
+                if(resultMap.length == 0){
+                    chartParams = [
+                                    { 
+                                        name: "No Data Selected",
+                                        data:[
+                                                
+                                        ]
+                                    }      
+                    ]
+                } else{
+                    resultMap.forEach(function (item, index, array) {
+                    var param = 
+                                { 
+                                    name: item[0].name,
+                                    data:[
+                                            item[1].value, item[2].value, item[3].value, item[4].value, item[5].value
+                                    ]
+                                }
+                    chartParams.push(param);
+                    });
+                    
+                }
+            
+                //[start] start rendering graph
+                Highcharts.chart('chartDiv', {
+
+                    title: {
+                        text: '<都道府県別の総人口推移>'
+                    },
+
+                    subtitle: {
+                        text: 'Source: RESAS-API'
+                    },
+                    xAxis: {
+                        title: {
+                            text: '年度'
+                        }
+                    },
+                    yAxis: {
+                        title: {
+                            text: '人口数'
+                        }
+                    },
+
+                    legend: {
+                        layout: 'vertical',
+                        align: 'right',
+                        verticalAlign: 'middle'
+                    },
+
+                    plotOptions: {
+                        series: {
+                            label: {
+                                connectorAllowed: false
+                            },
+                            pointStart: 1980,
+                            pointInterval: 10,
+                            pointEnd: 2020
+                        }
+                    },
+
+                    series: 
+                            chartParams,
+
+                    responsive: {
+                        rules: [{
+                            condition: {
+                                maxWidth: 500
+                            },
+                            chartOptions: {
+                                legend: {
+                                    layout: 'horizontal',
+                                    align: 'center',
+                                    verticalAlign: 'bottom'
+                                }
+                            }
+                        }]
+                    }
+                });
+                //[end] end of rendering graph
+            }
+            
+        }]);
+        //Angular.js Area closed
+        
+        //JavaScript Function Area
+        function slideToggleListFunc(btn) {
+            var clickedFlag = $(btn).attr('flag');
+            if(clickedFlag == 'clicked'){
+                $(btn).attr('flag', 'unclicked');
+                $(btn).html('都道府県見る');
+            } else {
+                $(btn).attr('flag','clicked');
+                $(btn).html('都道府県閉じる');
+            } 
+            
+            $( "#selectStateDiv" ).slideToggle( "slow", function() {});
+            
+        }
+    </script>
+        
+    <style>
+        h1 {
+            font-family: 'Sawarabi Gothic';
+            text-align: center;
+        }
+        button {
+            margin-left: 7%;
+            font-size: 100%;
+            background-color: white;
+            color: black;
+            border: 2px solid #555555;
+        }
+        button:hover {
+            background-color: #555555;
+            color: white;
+        }
+        #chartDiv {
+            min-width: 310px;
+            max-width: 800px;
+            height: 400px;
+            margin: 0 auto;
+        }
+        li { 
+            list-style: none;
+            float: left; 
+            width: 15%;
+            margin-left: 5%;
+            padding-bottom: 0.5%;
+        } 
+        body { font-family: 'M PLUS Rounded 1c';}
+        #selectStateDiv {
+            width: 100%;
+            margin-bottom: 25%;
+        }
+    </style>
+    <body ng-app="myapp" ng-controller="ChartController">
+        <h1>都道府県別の総人口推移グラフ</h1>
+        <button flag="clicked" onclick="slideToggleListFunc(this);">都道府県閉じる</button>
+        <div id="selectStateDiv">
+            <ul>
+                <li ng-repeat="state in stateList">
+                    {{state.prefName}}<input type="checkbox" id="{{state.prefName}}" value="{{state.prefCode}}" ng-click="renderGraph($event)">
+                </li> 
+            </ul>
+        </div>
+        <div id="chartDiv">
+            <!--render chart here-->
+        </div>
+        <br><br>
+    </body>
+
+</html>
